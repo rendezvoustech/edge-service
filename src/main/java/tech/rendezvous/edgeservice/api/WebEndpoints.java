@@ -15,7 +15,7 @@ public class WebEndpoints {
         return RouterFunctions.route()
                 .GET("/participant-fallback", request ->
                         ServerResponse.ok().body(Mono.just(""), String.class))
-                .POST("/√-fallback", request ->
+                .POST("/participant-fallback", request ->
                         ServerResponse.status(HttpStatus.SERVICE_UNAVAILABLE).build())
                 .build();
     }

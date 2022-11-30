@@ -10,34 +10,35 @@ spring:
     name: edge-service
   lifecycle:
     timeout-per-shutdown-phase: 15s
+  config:
+    import: "optional:configserver:"
   cloud:
+    config:
+      uri: http://localhost:8888
+      request-connect-timeout: 5000 # 5s
+      request-read-timeout: 5000 # 5s
+      fail-fast: false # In production, set to true
+      retry:
+        max-attempts: 6
+        initial-interval: 1000 # 1s
+        max-interval: 2000 # 2s
+        multiplier: 1.1
     gateway:
       httpclient:
-        connect-timeout: 5000
+        connect-timeout: 2000 # 2s
         response-timeout: 5s
         pool:
           type: elastic
           max-idle-time: 15s
           max-life-time: 60s
-      routes:
-        - id: participant-route
-          uri: ${PARTICIPANT_SERVICE_URL:http://localhost:9001}/participants
-          predicates:
-            - Path=/participants/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: participantCircuitBreaker
-                fallbackUri: forward:/participant-fallback
-        - id: rendezvous-route
-          uri: ${RENDEZVOUS_SERVICE_URL:http://localhost:9002}/rendezvous
-          predicates:
-            - Path=/rendezvous/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: rendezvousCircuitBreaker
       default-filters:
+        - SaveSession
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter:
+              replenishRate: 10
+              burstCapacity: 20
+              requestedTokens: 1
         - name: Retry
           args:
             retries: 3
@@ -46,9 +47,37 @@ spring:
             exceptions: java.io.IOException, java.util.concurrent.TimeoutException
             backoff:
               firstBackoff: 50ms
-              maxBackoff: 500ms
+              maxBackOff: 500ms
               factor: 2
               basedOnPreviousValue: false
+      routes:
+        - id: participant-route
+          uri: ${PARTICIPANT_SERVICE_URL:http://localhost:9001}/participants
+          predicates:
+            - Path=/participants/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: catalogCircuitBreaker
+                fallbackUri: forward:/catalog-fallback
+        - id: rendezvous-route
+          uri: ${RENDEZVOUS_SERVICE_URL:http://localhost:9002}/rendezvous
+          predicates:
+            - Path=/rendezvous/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orderCircuitBreaker
+  redis:
+    connect-timeout: 2s
+    host: localhost
+    port: 6379
+    timeout: 1s
+  session:
+    store-type: redis
+    timeout: 10m
+    redis:
+      namespace: rendezvous:edge
 
 resilience4j:
   circuitbreaker:
@@ -62,6 +91,7 @@ resilience4j:
     configs:
       default:
         timeoutDuration: 5s
+
 logging:
   level:
     io.github.resilience4j: DEBUG
