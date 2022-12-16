@@ -17,6 +17,7 @@ ext {
     set('otelVersion', "1.17.0")
     set('springCloudVersion', "2021.0.5")
     set('testcontainersVersion', "1.17.3")
+
 }
 
 dependencies {
