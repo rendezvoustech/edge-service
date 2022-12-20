@@ -34,7 +34,7 @@ spec:
             - name: RENDEZVOUS_SERVICE_URL
               value: http://rendezvous-service
             - name: SPA_URL
-              value: http://rendezvous-ui
+              value: http://administrator-ui
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
